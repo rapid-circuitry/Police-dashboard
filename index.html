@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Command Center - God View Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e1a;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-rows: 60px 1fr 180px;
+            grid-template-columns: 320px 1fr 280px;
+            height: 100vh;
+            grid-template-areas: 
+                "header header header"
+                "left-panel map right-panel"
+                "timeline timeline timeline";
+        }
+
+        /* Header */
+        .header {
+            grid-area: header;
+            background: linear-gradient(135deg, #1a1f2e, #2d3748);
+            border-bottom: 2px solid #4a5568;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: bold;
+            color: #63b3ed;
+        }
+
+        .emergency-alert {
+            background: #e53e3e;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #2d3748;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #48bb78;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            grid-area: left-panel;
+            background: #1a202c;
+            border-right: 1px solid #4a5568;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            padding: 15px;
+            background: #2d3748;
+            border-bottom: 1px solid #4a5568;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .officer-card {
+            padding: 15px;
+            border-bottom: 1px solid #4a5568;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .officer-card:hover {
+            background: #2d3748;
+        }
+
+        .officer-card.selected {
+            background: #3182ce;
+        }
+
+        .officer-card.critical-alert {
+            border-left: 4px solid #e53e3e;
+            animation: cardBlinkCritical 1.5s infinite;
+        }
+
+        .officer-card.warning-alert {
+            border-left: 4px solid #ed8936;
+            animation: cardPulseWarning 2s infinite;
+        }
+
+        .officer-card.offline-alert {
+            border-left: 4px solid #718096;
+            animation: cardFadeOffline 3s infinite;
+        }
+
+        @keyframes cardBlinkCritical {
+            0%, 50% { 
+                background: rgba(229, 62, 62, 0.1);
+                box-shadow: 0 0 10px rgba(229, 62, 62, 0.3);
+            }
+            51%, 100% { 
+                background: rgba(229, 62, 62, 0.25);
+                box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
+            }
+        }
+
+        @keyframes cardPulseWarning {
+            0%, 100% { 
+                background: rgba(237, 137, 54, 0.05);
+                box-shadow: 0 0 5px rgba(237, 137, 54, 0.2);
+            }
+            50% { 
+                background: rgba(237, 137, 54, 0.15);
+                box-shadow: 0 0 10px rgba(237, 137, 54, 0.4);
+            }
+        }
+
+        @keyframes cardFadeOffline {
+            0%, 100% { 
+                background: rgba(113, 128, 150, 0.05);
+                opacity: 0.7;
+            }
+            50% { 
+                background: rgba(113, 128, 150, 0.1);
+                opacity: 0.9;
+            }
+        }
+
+        .officer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .officer-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-normal { background: #48bb78; }
+        .status-caution { background: #ed8936; }
+        .status-critical { background: #e53e3e; }
+        .status-offline { background: #718096; }
+
+        .officer-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .badge-number {
+            color: #a0aec0;
+            font-size: 12px;
+        }
+
+        .officer-dept {
+            color: #63b3ed;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .vitals-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .vital-item {
+            font-size: 11px;
+            color: #e2e8f0;
+        }
+
+        .vital-value {
+            font-weight: bold;
+            color: #63b3ed;
+        }
+
+        .critical-air {
+            color: #e53e3e !important;
+            animation: blink 1s infinite;
+        }
+
+        .warning-air {
+            color: #ed8936 !important;
+        }
+
+        .good-air {
+            color: #48bb78 !important;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        .officer-location {
+            font-size: 11px;
+            color: #a0aec0;
+        }
+
+        .quick-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            background: #4a5568;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: #63b3ed;
+        }
+
+        /* Map Area */
+        .map-container {
+            grid-area: map;
+            position: relative;
+            background: linear-gradient(45deg, #2d3748, #4a5568);
+            overflow: hidden;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+
+        .map-btn {
+            padding: 8px 12px;
+            background: rgba(45, 55, 72, 0.9);
+            border: 1px solid #63b3ed;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .map-btn.active {
+            background: #63b3ed;
+        }
+
+        .map-display {
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23374151" stroke-width="0.5"/></pattern></defs><rect width="400" height="300" fill="%232d3748"/><rect width="400" height="300" fill="url(%23grid)"/><text x="200" y="30" text-anchor="middle" fill="%2363b3ed" font-size="16" font-weight="bold">Telangana &amp; Andhra Pradesh</text><path d="M80 60 Q120 50 160 65 L200 70 Q240 75 280 85 L320 95 Q350 110 360 140 L355 180 Q340 220 300 240 L250 250 Q200 255 150 245 L100 230 Q70 210 65 180 L60 140 Q55 100 80 60 Z" fill="none" stroke="%2363b3ed" stroke-width="2" stroke-dasharray="3,3"/><path d="M80 150 Q120 140 160 155 L200 160 Q240 165 280 175 L320 185 Q350 200 360 230 L355 270 Q340 310 300 330 L250 340 Q200 345 150 335 L100 320 Q70 300 65 270 L60 230 Q55 190 80 150 Z" fill="none" stroke="%23ed8936" stroke-width="2" stroke-dasharray="3,3"/><text x="120" y="100" fill="%2363b3ed" font-size="10">Hyderabad</text><text x="180" y="85" fill="%2363b3ed" font-size="10">Warangal</text><text x="250" y="110" fill="%2363b3ed" font-size="10">Khammam</text><text x="120" y="200" fill="%23ed8936" font-size="10">Vijayawada</text><text x="180" y="185" fill="%23ed8936" font-size="10">Guntur</text><text x="250" y="210" fill="%23ed8936" font-size="10">Visakhapatnam</text><text x="300" y="130" fill="%2363b3ed" font-size="8">TS</text><text x="300" y="230" fill="%23ed8936" font-size="8">AP</text></svg>');
+            position: relative;
+        }
+
+        .officer-marker {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .officer-marker:hover {
+            transform: scale(1.2);
+            z-index: 10;
+        }
+
+        .marker-normal { background: #48bb78; }
+        .marker-caution { 
+            background: #ed8936;
+            animation: markerPulse 2s infinite;
+        }
+        .marker-critical { 
+            background: #e53e3e;
+            animation: markerBlink 1s infinite;
+        }
+        .marker-offline { 
+            background: #718096;
+            animation: markerFade 3s infinite;
+        }
+
+        @keyframes markerBlink {
+            0%, 50% { 
+                background: #e53e3e;
+                box-shadow: 0 0 15px rgba(229, 62, 62, 0.8);
+            }
+            51%, 100% { 
+                background: #f56565;
+                box-shadow: 0 0 25px rgba(229, 62, 62, 1);
+            }
+        }
+
+        @keyframes markerPulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 10px rgba(237, 137, 54, 0.5);
+            }
+            50% { 
+                transform: scale(1.1);
+                box-shadow: 0 0 20px rgba(237, 137, 54, 0.8);
+            }
+        }
+
+        @keyframes markerFade {
+            0%, 100% { 
+                opacity: 0.5;
+            }
+            50% { 
+                opacity: 0.8;
+            }
+        }
+
+        .incident-marker {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #e53e3e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: ping 2s infinite;
+        }
+
+        @keyframes ping {
+            0% { transform: scale(1); opacity: 1; }
+            75%, 100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Right Panel */
+        .right-panel {
+            grid-area: right-panel;
+            background: #1a202c;
+            border-left: 1px solid #4a5568;
+            overflow-y: auto;
+        }
+
+        .stats-section {
+            padding: 15px;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: #2d3748;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #63b3ed;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+
+        .alert-section {
+            padding: 15px;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        .alert-item {
+            background: rgba(229, 62, 62, 0.2);
+            border-left: 4px solid #e53e3e;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .alert-time {
+            font-size: 10px;
+            color: #a0aec0;
+        }
+
+        .alert-text {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .coverage-section {
+            padding: 15px;
+        }
+
+        .coverage-bar {
+            background: #2d3748;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .coverage-label {
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        /* Timeline */
+        .timeline {
+            grid-area: timeline;
+            background: #1a202c;
+            border-top: 1px solid #4a5568;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .timeline-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #63b3ed;
+        }
+
+        .timeline-events {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .timeline-event {
+            flex-shrink: 0;
+            background: #2d3748;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 4px solid #63b3ed;
+            min-width: 200px;
+        }
+
+        .event-time {
+            font-size: 10px;
+            color: #a0aec0;
+        }
+
+        .event-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 4px 0;
+        }
+
+        .event-details {
+            font-size: 11px;
+            color: #e2e8f0;
+        }
+
+        .mini-map {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 100px;
+            background: rgba(26, 32, 44, 0.9);
+            border: 1px solid #63b3ed;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">🚔 TELANGANA POLICE COMMAND CENTER</div>
+                <div class="emergency-alert">🚨 క్రిటికల్ అలర్ట్: 2 అధికారులు రెస్పాన్స్‌లో | 🌫️ AIR QUALITY WARNING</div>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>System Online</span>
+                </div>
+                <div class="status-indicator">
+                    <span>⏰ 14:32:15</span>
+                </div>
+                <div class="status-indicator">
+                    <span>👮‍♂️ 47/52 On Duty</span>
+                </div>
+                <div class="status-indicator">
+                    <span style="font-size: 11px;">🚨 Visual Alerts Active</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Panel - Officer List -->
+        <div class="left-panel">
+            <div class="panel-header">
+                Active Officers (47)
+            </div>
+            
+            <div class="officer-card selected critical-alert">
+                <div class="officer-header">
+                    <div class="officer-status status-critical"></div>
+                    <div>
+                        <div class="officer-name">SI Ravi Krishna</div>
+                        <div class="badge-number">ID: TS2847 | Rank: Sub Inspector</div>
+                        <div class="officer-dept">Dept: Cyberabad Traffic | Limits: Banjara Hills</div>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-item">HR: <span class="vital-value">156 bpm</span></div>
+                    <div class="vital-item">SpO2: <span class="vital-value">89%</span></div>
+                    <div class="vital-item">Temp: <span class="vital-value">38.4°C</span></div>
+                    <div class="vital-item">Battery: <span class="vital-value">45%</span></div>
+                    <div class="vital-item">AQI: <span class="vital-value critical-air">285</span></div>
+                    <div class="vital-item">PM2.5: <span class="vital-value critical-air">95 μg/m³</span></div>
+                </div>
+                <div class="officer-location">📍 Banjara Hills & Road No.12</div>
+                <div class="quick-actions">
+                    <button class="action-btn">📞 Call</button>
+                    <button class="action-btn">📱 Message</button>
+                    <button class="action-btn">🚨 Alert</button>
+                </div>
+            </div>
+
+            <div class="officer-card warning-alert">
+                <div class="officer-header">
+                    <div class="officer-status status-caution"></div>
+                    <div>
+                        <div class="officer-name">WPC Lakshmi Devi</div>
+                        <div class="badge-number">ID: TS3921 | Rank: Woman Police Constable</div>
+                        <div class="officer-dept">Dept: Women Safety Unit | Limits: Madhapur</div>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-item">HR: <span class="vital-value">92 bpm</span></div>
+                    <div class="vital-item">SpO2: <span class="vital-value">96%</span></div>
+                    <div class="vital-item">Temp: <span class="vital-value">37.0°C</span></div>
+                    <div class="vital-item">Battery: <span class="vital-value">12%</span></div>
+                    <div class="vital-item">AQI: <span class="vital-value">152</span></div>
+                    <div class="vital-item">PM2.5: <span class="vital-value warning-air">45 μg/m³</span></div>
+                </div>
+                <div class="officer-location">📍 Cyberabad Police Station</div>
+                <div class="quick-actions">
+                    <button class="action-btn">📞 Call</button>
+                    <button class="action-btn">📱 Message</button>
+                    <button class="action-btn">🔋 Battery</button>
+                </div>
+            </div>
+
+            <div class="officer-card">
+                <div class="officer-header">
+                    <div class="officer-status status-normal"></div>
+                    <div>
+                        <div class="officer-name">HC Venkata Reddy</div>
+                        <div class="badge-number">ID: AP1534 | Rank: Head Constable</div>
+                        <div class="officer-dept">Dept: AP Highway Patrol | Limits: Vijayawada</div>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-item">HR: <span class="vital-value">75 bpm</span></div>
+                    <div class="vital-item">SpO2: <span class="vital-value">98%</span></div>
+                    <div class="vital-item">Temp: <span class="vital-value">36.9°C</span></div>
+                    <div class="vital-item">Battery: <span class="vital-value">87%</span></div>
+                    <div class="vital-item">AQI: <span class="vital-value good-air">65</span></div>
+                    <div class="vital-item">PM2.5: <span class="vital-value good-air">18 μg/m³</span></div>
+                </div>
+                <div class="officer-location">📍 HITEC City</div>
+                <div class="quick-actions">
+                    <button class="action-btn">📞 Call</button>
+                    <button class="action-btn">📱 Message</button>
+                    <button class="action-btn">✅ Check</button>
+                </div>
+            </div>
+
+            <div class="officer-card">
+                <div class="officer-header">
+                    <div class="officer-status status-normal"></div>
+                    <div>
+                        <div class="officer-name">PC Sunil Kumar</div>
+                        <div class="badge-number">ID: TS4672 | Rank: Police Constable</div>
+                        <div class="officer-dept">Dept: Traffic Control | Limits: Gachibowli</div>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-item">HR: <span class="vital-value">68 bpm</span></div>
+                    <div class="vital-item">SpO2: <span class="vital-value">99%</span></div>
+                    <div class="vital-item">Temp: <span class="vital-value">36.7°C</span></div>
+                    <div class="vital-item">Battery: <span class="vital-value">76%</span></div>
+                    <div class="vital-item">AQI: <span class="vital-value good-air">58</span></div>
+                    <div class="vital-item">PM2.5: <span class="vital-value good-air">15 μg/m³</span></div>
+                </div>
+                <div class="officer-location">📍 Outer Ring Road</div>
+                <div class="quick-actions">
+                    <button class="action-btn">📞 Call</button>
+                    <button class="action-btn">📱 Message</button>
+                    <button class="action-btn">✅ Check</button>
+                </div>
+            </div>
+
+            <div class="officer-card offline-alert">
+                <div class="officer-header">
+                    <div class="officer-status status-offline"></div>
+                    <div>
+                        <div class="officer-name">SI Madhavi Latha</div>
+                        <div class="badge-number">ID: AP7829 | Rank: Sub Inspector</div>
+                        <div class="officer-dept">Dept: Crime Branch | Limits: Secunderabad</div>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-item">HR: <span class="vital-value">-- bpm</span></div>
+                    <div class="vital-item">SpO2: <span class="vital-value">--%</span></div>
+                    <div class="vital-item">Temp: <span class="vital-value">--°C</span></div>
+                    <div class="vital-item">Battery: <span class="vital-value">0%</span></div>
+                    <div class="vital-item">AQI: <span class="vital-value">--</span></div>
+                    <div class="vital-item">PM2.5: <span class="vital-value">-- μg/m³</span></div>
+                </div>
+                <div class="officer-location">📍 Last: Begumpet Police Station</div>
+                <div class="quick-actions">
+                    <button class="action-btn">📞 Call</button>
+                    <button class="action-btn">🔍 Locate</button>
+                    <button class="action-btn">⚠️ Issue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Map -->
+        <div class="map-container">
+            <div class="map-controls">
+                <button class="map-btn active">🗺️ Street View</button>
+                <button class="map-btn">🛰️ Satellite</button>
+                <button class="map-btn">🔥 Heat Map</button>
+                <button class="map-btn">📊 Coverage</button>
+                <button class="map-btn">🌫️ Air Quality</button>
+                <button class="map-btn">🎯 Incidents</button>
+            </div>
+            
+            <div class="map-display">
+                <!-- Officer Markers -->
+                <div class="officer-marker marker-critical" style="top: 30%; left: 25%;">RK</div>
+                <div class="officer-marker marker-caution" style="top: 45%; left: 60%;">LD</div>
+                <div class="officer-marker marker-normal" style="top: 20%; left: 70%;">VR</div>
+                <div class="officer-marker marker-normal" style="top: 60%; left: 40%;">SK</div>
+                <div class="officer-marker marker-normal" style="top: 75%; left: 30%;">PR</div>
+                <div class="officer-marker marker-normal" style="top: 35%; left: 80%;">AN</div>
+                <div class="officer-marker marker-normal" style="top: 55%; left: 15%;">KV</div>
+                <div class="officer-marker marker-caution" style="top: 80%; left: 65%;">SB</div>
+
+                <!-- Incident Markers -->
+                <div class="incident-marker" style="top: 28%; left: 27%;">🚨</div>
+                <div class="incident-marker" style="top: 70%; left: 55%;">⚠️</div>
+            </div>
+
+            <!-- Mini Map -->
+            <div class="mini-map">
+                <div style="padding: 5px; font-size: 10px; text-align: center;">
+                    <div>Telangana & AP Overview</div>
+                    <div style="margin-top: 5px; display: flex; justify-content: space-around;">
+                        <span>🟢 42</span>
+                        <span>🟡 3</span>
+                        <span>🔴 2</span>
+                        <span>⚫ 0</span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 8px; color: #a0aec0;">
+                        <div>🔴 Critical: Fast Blink</div>
+                        <div>🟡 Warning: Slow Pulse</div>
+                        <div>⚫ Offline: Fade</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Stats & Alerts -->
+        <div class="right-panel">
+            <div class="stats-section">
+                <div class="panel-header">Selected Officer Details</div>
+                <div style="padding: 10px; background: #2d3748; border-radius: 6px; margin-top: 10px;">
+                    <div style="font-weight: bold; color: #63b3ed; margin-bottom: 8px;">SI Ravi Krishna</div>
+                    <div style="font-size: 12px; margin-bottom: 4px;"><strong>ID Number:</strong> TS2847</div>
+                    <div style="font-size: 12px; margin-bottom: 4px;"><strong>Rank:</strong> Sub Inspector</div>
+                    <div style="font-size: 12px; margin-bottom: 4px;"><strong>Department:</strong> Cyberabad Traffic</div>
+                    <div style="font-size: 12px; margin-bottom: 8px;"><strong>Limits:</strong> Banjara Hills</div>
+                    <div style="font-size: 11px; color: #e53e3e; margin-bottom: 8px;"><strong>Status:</strong> CRITICAL - Medical assistance en route</div>
+                    <div style="font-size: 11px; background: rgba(229,62,62,0.2); padding: 6px; border-radius: 4px;">
+                        <strong>⚠️ AIR QUALITY ALERT:</strong> AQI 285 (Very Unhealthy) - PM2.5: 95 μg/m³<br>
+                        <span style="color: #fbb6ce;">Recommend immediate N95 mask deployment</span>
+                    </div>
+                </div>
+                <div class="stats-grid" style="margin-top: 15px;">
+                    <div class="stat-item">
+                        <div class="stat-value">47</div>
+                        <div class="stat-label">On Duty</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">2</div>
+                        <div class="stat-label">Critical</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">1</div>
+                        <div class="stat-label">Air Quality</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">9</div>
+                        <div class="stat-label">Incidents</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">4.2m</div>
+                        <div class="stat-label">Avg Response</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">145</div>
+                        <div class="stat-label">Avg AQI</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert-section">
+                <div class="panel-header">🚨 Active Alerts</div>
+                <div class="alert-item">
+                    <div class="alert-time">14:31:47</div>
+                    <div class="alert-text"><strong>CRITICAL:</strong> SI Ravi Krishna - High HR & Low SpO2</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-time">14:31:25</div>
+                    <div class="alert-text"><strong>AIR QUALITY:</strong> SI Ravi Krishna - AQI 285 (Very Unhealthy)</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-time">14:29:12</div>
+                    <div class="alert-text"><strong>WARNING:</strong> WPC Lakshmi Devi - Battery Critical (12%)</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-time">14:25:33</div>
+                    <div class="alert-text"><strong>INFO:</strong> SI Madhavi Latha - Equipment Offline</div>
+                </div>
+            </div>
+
+            <div class="coverage-section">
+                <div class="panel-header">All Officers Summary</div>
+                <div style="font-size: 10px; color: #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: #4a5568; margin-bottom: 2px; font-weight: bold;">
+                        <span>Name | ID | Dept</span>
+                        <span>Status</span>
+                        <span>Limits</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: rgba(229,62,62,0.2); margin-bottom: 2px;">
+                        <span>Ravi Krishna | TS2847 | Traffic</span>
+                        <span style="color: #e53e3e;">CRIT</span>
+                        <span>Banjara</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: rgba(237,137,54,0.2); margin-bottom: 2px;">
+                        <span>Lakshmi Devi | TS3921 | Women</span>
+                        <span style="color: #ed8936;">WARN</span>
+                        <span>Madhapur</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: rgba(72,187,120,0.2); margin-bottom: 2px;">
+                        <span>Venkata Reddy | AP1534 | Highway</span>
+                        <span style="color: #48bb78;">OK</span>
+                        <span>Vijayawada</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: rgba(72,187,120,0.2); margin-bottom: 2px;">
+                        <span>Sunil Kumar | TS4672 | Traffic</span>
+                        <span style="color: #48bb78;">OK</span>
+                        <span>Gachibowli</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 40px 60px; gap: 5px; padding: 5px; background: rgba(113,128,150,0.2); margin-bottom: 2px;">
+                        <span>Madhavi Latha | AP7829 | Crime</span>
+                        <span style="color: #718096;">OFF</span>
+                        <span>Secunderabad</span>
+                    </div>
+                </div>
+                
+                <div class="panel-header" style="margin-top: 15px;">Zone Coverage</div>
+                
+                <div class="coverage-label">
+                    <span>Hyderabad City</span>
+                    <span>85%</span>
+                </div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" style="width: 85%;"></div>
+                </div>
+
+                <div class="coverage-label">
+                    <span>Cyberabad</span>
+                    <span>72%</span>
+                </div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" style="width: 72%;"></div>
+                </div>
+
+                <div class="coverage-label">
+                    <span>Rachakonda</span>
+                    <span>91%</span>
+                </div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" style="width: 91%;"></div>
+                </div>
+
+                <div class="coverage-label">
+                    <span>Highway Patrol</span>
+                    <span>68%</span>
+                </div>
+                <div class="coverage-bar">
+                    <div class="coverage-fill" style="width: 68%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline">
+            <div class="timeline-header">📅 Recent Activity Timeline</div>
+            <div class="timeline-events">
+                <div class="timeline-event">
+                    <div class="event-time">14:31:47</div>
+                    <div class="event-title">🚨 Officer Emergency</div>
+                    <div class="event-details">SI Ravi Krishna experiencing critical vitals. Medical assistance dispatched to Banjara Hills & Road No.12.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:31:25</div>
+                    <div class="event-title">🌫️ Air Quality Alert</div>
+                    <div class="event-details">Dangerous air quality detected at SI Ravi Krishna's location. AQI 285 - Very Unhealthy. N95 masks recommended for all officers in Banjara Hills area.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:29:12</div>
+                    <div class="event-title">🔋 Equipment Warning</div>
+                    <div class="event-details">WPC Lakshmi Devi battery at 12%. Requesting immediate equipment replacement at Cyberabad Police Station.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:25:33</div>
+                    <div class="event-title">📡 Signal Lost</div>
+                    <div class="event-details">Lost contact with SI Madhavi Latha. Last known location: Begumpet Police Station.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:20:15</div>
+                    <div class="event-title">✅ Shift Change</div>
+                    <div class="event-details">Day shift officers Prasad, Naidu, and Rao signed off. Evening shift now active.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:15:42</div>
+                    <div class="event-title">🚗 Traffic Incident</div>
+                    <div class="event-details">Vehicle collision at Outer Ring Road near Gachibowli. PC Sunil Kumar responding.</div>
+                </div>
+                <div class="timeline-event">
+                    <div class="event-time">14:10:28</div>
+                    <div class="event-title">☑️ Routine Check</div>
+                    <div class="event-details">All officers in Cyberabad Division completed hourly wellness verification.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate real-time updates
+        function updateVitals() {
+            // Simulate changing vitals for demonstration
+            const officerCards = document.querySelectorAll('.officer-card');
+            
+            officerCards.forEach(card => {
+                const hrElement = card.querySelector('.vital-value');
+                if (hrElement && card.querySelector('.officer-name').textContent === 'SI Ravi Krishna') {
+                    let currentHR = parseInt(hrElement.textContent);
+                    if (currentHR > 120) {
+                        hrElement.textContent = (currentHR + Math.floor(Math.random() * 10 - 5)) + ' bpm';
+                    }
+                }
+            });
+        }
+
+        // Update every 5 seconds
+        setInterval(updateVitals, 5000);
+
+        // Officer selection functionality
+        document.querySelectorAll('.officer-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove selected class but preserve alert classes
+                document.querySelectorAll('.officer-card').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                
+                // Update right panel with selected officer info
+                const officerName = this.querySelector('.officer-name').textContent;
+                const selectedOfficerPanel = document.querySelector('.stats-section div[style*="background: #2d3748"]');
+                
+                if (selectedOfficerPanel) {
+                    // Update the selected officer details panel
+                    console.log(`Selected: ${officerName}`);
+                }
+            });
+        });
+
+        // Map control functionality
+        document.querySelectorAll('.map-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Officer marker click functionality
+        document.querySelectorAll('.officer-marker').forEach(marker => {
+            marker.addEventListener('click', function() {
+                alert(`Officer ${this.textContent} - Click to view detailed vitals and location history`);
+            });
+        });
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            document.querySelector('.header-right span').textContent = `⏰ ${timeStr}`;
+        }
+        
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
